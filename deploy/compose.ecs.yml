@@ -1,0 +1,29 @@
+# Run from the project root:
+# docker compose --env-file .env -f deploy/compose.ecs.yml -p ai-learning-assistant up -d
+# AILA_IMAGE must point to the image you pushed to your own ACR repository.
+services:
+  backend:
+    image: ${AILA_IMAGE:?Set AILA_IMAGE to your ACR image URI and tag}
+    restart: unless-stopped
+    ports:
+      - "${AILA_BIND_ADDRESS:-127.0.0.1}:14242:14242"
+    environment:
+      APP_SQLITE_PATH: /app/data/app.sqlite
+      WORKSPACE_ROOT: /app/workspace
+      MODEL_PROVIDER: openai_compatible
+      MODEL_DISPLAY_NAME: DeepSeek Flash
+      MODEL_BASE_URL: https://api.deepseek.com
+      MODEL_NAME: ${MODEL_NAME:-deepseek-flash}
+      MODEL_CONTEXT_WINDOW: ${MODEL_CONTEXT_WINDOW:-1000000}
+      MODEL_SUPPORTS_STREAMING: "true"
+      MODEL_SECRET_FILE: /app/data/model-secrets.env
+      MODEL_KEY_ENCRYPTION_FILE: /app/data/model-key-encryption.key
+    volumes:
+      - ../data:/app/data
+      - ../workspace:/app/workspace
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:14242/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
